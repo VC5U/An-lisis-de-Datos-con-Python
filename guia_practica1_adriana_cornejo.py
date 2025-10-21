@@ -188,29 +188,64 @@ else:
 # ==============================
 # 9. Análisis por Años
 # ==============================
+
 st.subheader("📈 Análisis Comparativo por Año")
+
 if 'date' in df.columns and 'internal_type' in df.columns:
     df['year'] = df['date'].dt.year
+    
+    # a) KPIs por año, verificando que existan las columnas
+    if 'title' in df.columns:
+        total_registros_col = df['title']
+    else:
+        total_registros_col = pd.Series([1]*len(df))  # fallback
+    
+    if 'total' in df.columns:
+        total_monto_col = pd.to_numeric(df['total'], errors='coerce').fillna(0)
+    elif 'amount' in df.columns:
+        total_monto_col = pd.to_numeric(df['amount'], errors='coerce').fillna(0)
+    else:
+        total_monto_col = pd.Series([0]*len(df))
+    
     kpi_year = df.groupby('year').agg(
-        total_registros=('title', 'count'),
-        total_monto=('total', lambda x: pd.to_numeric(x, errors='coerce').sum())
+        total_registros=(total_registros_col.name, 'count'),
+        total_monto=(total_monto_col.name, 'sum')
     ).reset_index()
+    
     st.dataframe(kpi_year)
-
+    
+    # b) Barras apiladas tipo × año
     stacked_year = df.groupby(['year', 'internal_type']).size().reset_index(name='Cantidad')
-    fig7 = px.bar(stacked_year, x='year', y='Cantidad', color='internal_type', barmode='stack',
-                  title="Contratos por Tipo y Año")
+    fig7 = px.bar(
+        stacked_year,
+        x='year',
+        y='Cantidad',
+        color='internal_type',
+        barmode='stack',
+        title="Contratos por Tipo y Año"
+    )
     st.plotly_chart(fig7, use_container_width=True)
 
+    # c) Evolución mensual comparada por año
     monthly_year = df.groupby(['month_year', 'year']).size().reset_index(name='Cantidad')
-    fig8 = px.line(monthly_year, x='month_year', y='Cantidad', color='year', markers=True,
-                   title="Evolución Mensual Comparada por Año")
+    fig8 = px.line(
+        monthly_year,
+        x='month_year',
+        y='Cantidad',
+        color='year',
+        markers=True,
+        title="Evolución Mensual Comparada por Año"
+    )
     st.plotly_chart(fig8, use_container_width=True)
 
+    # d) Heatmap año × mes
     heatmap_data = df.groupby(['year', 'month_year']).size().reset_index(name='Cantidad')
     heatmap_pivot = heatmap_data.pivot(index='year', columns='month_year', values='Cantidad').fillna(0)
-    fig9 = px.imshow(heatmap_pivot, labels=dict(x="Mes", y="Año", color="Cantidad"),
-                     title="Mapa de Calor: Contratos por Año y Mes")
+    fig9 = px.imshow(
+        heatmap_pivot,
+        labels=dict(x="Mes", y="Año", color="Cantidad"),
+        title="Mapa de Calor: Contratos por Año y Mes"
+    )
     st.plotly_chart(fig9, use_container_width=True)
 
     st.markdown("""
@@ -220,6 +255,7 @@ if 'date' in df.columns and 'internal_type' in df.columns:
     """)
 else:
     st.info("❗ No hay datos suficientes para realizar análisis por años.")
+
 
 # ==============================
 # 10. Exportar CSV
